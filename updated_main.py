@@ -1,5 +1,5 @@
+import collections
 import random
-from collections import deque
 
 import gymnasium as gym
 import matplotlib.pyplot as plt
@@ -9,15 +9,16 @@ from tensorflow.keras import layers
 
 
 class DQNAgent:
-    def __init__(self, state_size, action_size):
+    def __init__(self, state_size, action_size, learning_rate=0.001, gamma=1, epsilon=1, epsilon_decay=0.99,
+                 epsilon_min=0.01):
         self.state_size = state_size
         self.action_size = action_size
-        self.learning_rate = 0.0005
-        self.gamma = 0.95
-        self.epsilon = 1
-        self.epsilon_decay = 0.999
-        self.epsilon_min = 0.01
-        self.memory = deque(maxlen=2000)
+        self.learning_rate = learning_rate
+        self.gamma = gamma
+        self.epsilon = epsilon
+        self.epsilon_decay = epsilon_decay
+        self.epsilon_min = epsilon_min
+        self.memory = collections.deque(maxlen=2000)
 
         self.model = self._build_model()
         self.target_model = self._build_model()
@@ -26,17 +27,11 @@ class DQNAgent:
     def _build_model(self):
         model = keras.Sequential([
             layers.InputLayer(input_shape=(self.state_size,)),
-            layers.Dense(32, activation='relu'),
-            layers.Dense(32, activation='relu'),
-            layers.Dense(32, activation='relu'),
-            layers.Dropout(0.2),
+            layers.Dense(16, activation='relu'),
+            layers.Dense(16, activation='relu'),
             layers.Dense(self.action_size, activation='linear')
         ])
-
-        model.compile(
-            loss='mse',
-            optimizer=keras.optimizers.Adam(learning_rate=self.learning_rate)
-        )
+        model.compile(loss='mse', optimizer=keras.optimizers.Adam(learning_rate=self.learning_rate))
         return model
 
     def update_target_model(self):
@@ -57,7 +52,6 @@ class DQNAgent:
             return
 
         minibatch = random.sample(self.memory, batch_size)
-
         states = np.array([x[0][0] for x in minibatch])
         next_states = np.array([x[3][0] for x in minibatch])
 
@@ -86,24 +80,14 @@ class DQNAgent:
             self.epsilon *= self.epsilon_decay
 
 
-def train_lunar_lander_dqn(episodes=500, render_mode=None):
-    # Ortamı oluştur
-    env = gym.make('LunarLander-v3', render_mode=render_mode)
-
-    # Random seed değeri
-    env.reset(seed=42)
-    np.random.seed(42)
-    random.seed(42)
-
+def train_dqn_agent(env, episodes, batch_size=32):
     state_size = env.observation_space.shape[0]
     action_size = env.action_space.n
-
     agent = DQNAgent(state_size, action_size)
 
     episode_rewards = []
 
     for episode in range(episodes):
-        # Ortam reset
         state, _ = env.reset()
         state = np.reshape(state, [1, state_size])
 
@@ -118,15 +102,13 @@ def train_lunar_lander_dqn(episodes=500, render_mode=None):
 
             next_state = np.reshape(next_state, [1, state_size])
 
-            # Ödülü ve state kaydet
             agent.remember(state, action, reward, next_state, done or truncated)
 
-            # update state
             state = next_state
             total_reward += reward
             step += 1
 
-            agent.replay(32)
+            agent.replay(batch_size)
 
             if step > 1000:
                 break
@@ -135,7 +117,10 @@ def train_lunar_lander_dqn(episodes=500, render_mode=None):
 
         print(f"Episode: {episode}, Toplam Ödül: {total_reward:.2f}, Epsilon: {agent.epsilon:.2f}")
 
-    # Performans visualize
+    return episode_rewards
+
+
+def plot_performance(episode_rewards):
     plt.figure(figsize=(10, 5))
     plt.plot(episode_rewards)
     plt.title('Eğitim Boyunca Toplam Ödüller')
@@ -144,10 +129,19 @@ def train_lunar_lander_dqn(episodes=500, render_mode=None):
     plt.tight_layout()
     plt.show()
 
+
+def run_experiment():
+
+    env = gym.make('LunarLander-v3', render_mode='human')
+
+    episodes = 5
+    episode_rewards = train_dqn_agent(env, episodes)
+
+
+    plot_performance(episode_rewards)
+
     env.close()
 
 
-# start trainn
 if __name__ == "__main__":
-    # None, 'human', 'rgb_array'
-    train_lunar_lander_dqn(episodes=50, render_mode='human')
+    run_experiment()
