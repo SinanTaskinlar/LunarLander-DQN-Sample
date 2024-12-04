@@ -1,11 +1,13 @@
 import random
 from collections import deque
+
 import gymnasium as gym
 import matplotlib.pyplot as plt
 import numpy as np
 from tensorflow import keras
 from tensorflow.keras import layers
 import tensorflow as tf
+
 
 # DQN Modeli
 class DQNAgent:
@@ -66,9 +68,10 @@ class DQNAgent:
         self.model.fit(states, current_qs, verbose=0, batch_size=batch_size)
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
+
 # A3C Modeli
 class A3CAgent:
-    def __init__(self, state_size, action_size, gamma=0.99, learning_rate=0.003):
+    def __init__(self, state_size, action_size, gamma=0.99, learning_rate=0.0007):
         self.state_size = state_size
         self.action_size = action_size
         self.gamma = gamma
@@ -106,7 +109,7 @@ class A3CAgent:
         # Critic update
         with tf.GradientTape() as tape:
             value = self.critic(state, training=True)
-            critic_loss = keras.losses.MSE(target, value)
+            critic_loss = tf.keras.losses.MSE(target, value)
         grads = tape.gradient(critic_loss, self.critic.trainable_variables)
         self.critic.optimizer.apply_gradients(zip(grads, self.critic.trainable_variables))
 
@@ -119,43 +122,34 @@ class A3CAgent:
         grads = tape.gradient(actor_loss, self.actor.trainable_variables)
         self.actor.optimizer.apply_gradients(zip(grads, self.actor.trainable_variables))
 
+
 # PPO Modeli
 class PPOAgent:
-    def __init__(self, state_size, action_size):
-
+    def __init__(self, state_size, action_size, gamma=0.99, learning_rate=0.0003, clip_epsilon=0.2):
         self.state_size = state_size
         self.action_size = action_size
-        self.gamma = 0.99
-        self.learning_rate = 0.0003
-        self.clip_epsilon = 0.2
-
+        self.gamma = gamma
+        self.learning_rate = learning_rate
+        self.clip_epsilon = clip_epsilon
         self.actor = self._build_actor_model()
         self.critic = self._build_critic_model()
 
     def _build_actor_model(self):
         model = keras.Sequential([
             layers.Input(shape=(self.state_size,)),
-            layers.Dense(256, activation="relu"),
-            layers.Dense(256, activation="relu"),
-            layers.Dropout(0.2),
+            layers.Dense(64, activation="relu"),
             layers.Dense(self.action_size, activation="softmax")
         ])
-        model.compile(
-            optimizer=keras.optimizers.Adam(
-                learning_rate=self.learning_rate))
+        model.compile(optimizer=keras.optimizers.Adam(learning_rate=self.learning_rate))
         return model
 
     def _build_critic_model(self):
         model = keras.Sequential([
             layers.Input(shape=(self.state_size,)),
-            layers.Dense(256, activation="relu"),
-            layers.Dense(256, activation="relu"),
-            layers.Dropout(0.2),
+            layers.Dense(64, activation="relu"),
             layers.Dense(1, activation="linear")
         ])
-        model.compile(
-            optimizer=keras.optimizers.Adam(
-                learning_rate=self.learning_rate))
+        model.compile(optimizer=keras.optimizers.Adam(learning_rate=self.learning_rate))
         return model
 
     def act(self, state):
@@ -165,7 +159,8 @@ class PPOAgent:
     def learn(self, states, actions, rewards, next_states, dones, old_probs):
         pass  # PPO detaylı uygulama.
 
-# gENERİC Train Fonksiyonu
+
+# Ortak Eğitim Fonksiyonu
 def train_agent(agent_class, env_name="LunarLander-v3", episodes=500, batch_size=32, render_mode=None):
     env = gym.make(env_name, render_mode=render_mode)
     state_size = env.observation_space.shape[0]
@@ -194,7 +189,7 @@ def train_agent(agent_class, env_name="LunarLander-v3", episodes=500, batch_size
             step += 1
 
         episode_rewards.append(total_reward)
-        print(f"Deneme: {episode+1}, Ödül Değerii: {total_reward:.2f}")
+        print(f"Episode: {episode}, Reward: {total_reward:.2f}")
 
     plt.plot(episode_rewards)
     plt.title(f"Training Rewards ({agent_class.__name__})")
@@ -204,4 +199,4 @@ def train_agent(agent_class, env_name="LunarLander-v3", episodes=500, batch_size
 
 # Çalıştırma
 if __name__ == "__main__":
-    train_agent(PPOAgent, episodes=10, render_mode="human")
+    train_agent(PPOAgent, episodes=50, render_mode="human")
