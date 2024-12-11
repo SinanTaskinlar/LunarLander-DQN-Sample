@@ -50,7 +50,6 @@ class PlotAndLog:
 
     def plot_rewards(self, rewards):
         print(f"Plotting rewards for {self.algorithm_name}.")
-        print(rewards)
 
 
 # Define DQN model
@@ -352,7 +351,7 @@ class A3CTrainer:
 
 # Main function
 def main():
-    max_episodes = 5000
+    max_episodes = 8
     environment_name = "LunarLander-v3"
     render_mode = "human"
     # render_mode = None
@@ -364,7 +363,7 @@ def main():
         'gamma': 0.99,
         'value_loss_coef': 0.5,
         'num_workers': 4,
-        'max_episodes': max_episodes
+        'max_episodes': int( max_episodes / 4)
     }
     a3c_trainer = A3CTrainer(environment_name, a3c_env.observation_space.shape[0], a3c_env.action_space.n, a3c_config)
     a3c_rewards = a3c_trainer.train()
@@ -395,14 +394,14 @@ def main():
 
     # Kaydedilen modeli istersek yüklemek
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    dqn_model = DQNModel(a3c_env.observation_space.shape[0], a3c_env.action_space.n).to(device)
-    load_model(dqn_model, "dqn_model_500.pth")
-    ppo_model = PPOModel(a3c_env.observation_space.shape[0], a3c_env.action_space.n).to(device)
-    load_model(ppo_model, "ppo_model_500.pth")
-    a3c_model = A3CModel(a3c_env.observation_space.shape[0], a3c_env.action_space.n).to(device)
-    load_model(a3c_model, "a3c_model.pth")
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    #
+    # dqn_model = DQNModel(a3c_env.observation_space.shape[0], a3c_env.action_space.n).to(device)
+    # load_model(dqn_model, "dqn_model_500.pth")
+    # ppo_model = PPOModel(a3c_env.observation_space.shape[0], a3c_env.action_space.n).to(device)
+    # load_model(ppo_model, "ppo_model_500.pth")
+    # a3c_model = A3CModel(a3c_env.observation_space.shape[0], a3c_env.action_space.n).to(device)
+    # load_model(a3c_model, "a3c_model.pth")
 
     # Plot all algorithms
     plot_all_algorithms(dqn_rewards, ppo_rewards, a3c_rewards)
