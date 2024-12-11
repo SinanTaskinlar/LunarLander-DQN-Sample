@@ -1,17 +1,18 @@
-#import os
+# import os
 import random
 from collections import deque
-from multiprocessing import Process
 from multiprocessing import Manager
-import matplotlib.pyplot as plt
+from multiprocessing import Process
+
 import gymnasium as gym
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.distributions import Categorical
 
-def plot_all_algorithms(dqn_rewards, ppo_rewards, a3c_rewards):
 
+def plot_all_algorithms(dqn_rewards, ppo_rewards, a3c_rewards):
     plt.figure(figsize=(10, 6))
     plt.plot(dqn_rewards, label="DQN", color="blue")
     plt.plot(ppo_rewards, label="PPO", color="green")
@@ -22,6 +23,18 @@ def plot_all_algorithms(dqn_rewards, ppo_rewards, a3c_rewards):
     plt.legend()
     plt.grid()
     plt.show()
+
+
+def save_model(model, model_path):
+    torch.save(model.state_dict(), model_path)
+    print(f"Model saved at {model_path}")
+
+
+def load_model(model, model_path):
+    model.load_state_dict(torch.load(model_path))
+    model.eval()  # Modeli değerlendirme (inference) moduna al
+    print(f"Model loaded from {model_path}")
+
 
 # Utility class for wandb logging and reward plotting
 class PlotAndLog:
@@ -37,6 +50,8 @@ class PlotAndLog:
 
     def plot_rewards(self, rewards):
         print(f"Plotting rewards for {self.algorithm_name}.")
+        print(rewards)
+
 
 # Define DQN model
 class DQNModel(nn.Module):
@@ -53,6 +68,7 @@ class DQNModel(nn.Module):
 
     def forward(self, x):
         return self.network(x)
+
 
 # Trainer for DQN
 class DQNTrainer:
@@ -97,7 +113,11 @@ class DQNTrainer:
             )
 
             rewards.append(total_reward)
-            #self.plot_and_log.log(episode, total_reward)
+            # self.plot_and_log.log(episode, total_reward)
+
+            if episode % self.config.get('save_freq', 1000) == 0:
+                save_model(self.model, f"dqn_model_{episode}.pth")
+
             print(f"Episode {episode}, Reward: {total_reward}")
 
             if episode % self.config.get('target_update_freq', 10) == 0:
@@ -133,6 +153,7 @@ class DQNTrainer:
         loss.backward()
         self.optimizer.step()
 
+
 # Define PPO model
 class PPOModel(nn.Module):
     def __init__(self, state_size, action_size, hidden_layers=(64, 64)):
@@ -152,6 +173,7 @@ class PPOModel(nn.Module):
         policy = torch.softmax(self.policy_head(shared), dim=-1)
         value = self.value_head(shared)
         return policy, value
+
 
 # Trainer for PPO
 class PPOTrainer:
@@ -185,10 +207,15 @@ class PPOTrainer:
 
             rewards.append(total_reward)
             # self.plot_and_log.log(episode, total_reward)
+
+            if episode % self.config.get('save_freq', 1000) == 0:
+                save_model(self.model, f"ppo_model_{episode}.pth")
+
             print(f"Episode {episode}, Reward: {total_reward}")
 
         self.plot_and_log.plot_rewards(rewards)
         return rewards
+
 
 # Define A3C Model
 class A3CModel(nn.Module):
@@ -209,6 +236,7 @@ class A3CModel(nn.Module):
         policy = torch.softmax(self.policy_head(shared), dim=-1)
         value = self.value_head(shared)
         return policy, value
+
 
 # Worker for A3C training
 class A3CWorker:
@@ -290,6 +318,7 @@ class A3CWorker:
         # Synchronize local model with global model
         self.local_model.load_state_dict(self.global_model.state_dict())
 
+
 # Main A3C Training Process
 class A3CTrainer:
     def __init__(self, env, state_size, action_size, config):
@@ -297,7 +326,8 @@ class A3CTrainer:
         self.state_size = state_size
         self.action_size = action_size
         self.config = config
-        self.global_model = A3CModel(state_size, action_size).to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
+        self.global_model = A3CModel(state_size, action_size).to(
+            torch.device("cuda" if torch.cuda.is_available() else "cpu"))
         self.global_model.share_memory()
         self.optimizer = optim.Adam(self.global_model.parameters(), lr=config['lr'])
 
@@ -314,12 +344,15 @@ class A3CTrainer:
         for process in processes:
             process.join()
 
+        save_model(self.global_model, f"a3c_model.pth")
+        print("A3C model saved.")
+
         return reward_list
+
 
 # Main function
 def main():
-
-    max_episodes = 5
+    max_episodes = 5000
     environment_name = "LunarLander-v3"
     render_mode = "human"
     # render_mode = None
@@ -327,7 +360,7 @@ def main():
     # A3C Configuration
     a3c_env = gym.make(environment_name, render_mode=render_mode)
     a3c_config = {
-        'lr': 1e-4, #0.0001
+        'lr': 1e-4,  # 0.0001
         'gamma': 0.99,
         'value_loss_coef': 0.5,
         'num_workers': 4,
@@ -339,7 +372,7 @@ def main():
     # DQN Configuration
     dqn_env = gym.make(environment_name, render_mode=render_mode)
     dqn_config = {
-        'lr': 1e-3, #0.0001
+        'lr': 1e-3,  # 0.0001
         'gamma': 0.99,
         'epsilon_start': 1.0,
         'epsilon_end': 0.05,
@@ -354,14 +387,26 @@ def main():
     # PPO Configuration
     ppo_env = gym.make(environment_name, render_mode=render_mode)
     ppo_config = {
-        'lr': 3e-4, #0.0003
+        'lr': 3e-4,  # 0.0003
         'gamma': 0.99
     }
     ppo_trainer = PPOTrainer(ppo_env, ppo_env.observation_space.shape[0], ppo_env.action_space.n, ppo_config)
     ppo_rewards = ppo_trainer.train(max_episodes=max_episodes)
 
+    # Kaydedilen modeli istersek yüklemek
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    dqn_model = DQNModel(a3c_env.observation_space.shape[0], a3c_env.action_space.n).to(device)
+    load_model(dqn_model, "dqn_model_500.pth")
+    ppo_model = PPOModel(a3c_env.observation_space.shape[0], a3c_env.action_space.n).to(device)
+    load_model(ppo_model, "ppo_model_500.pth")
+    a3c_model = A3CModel(a3c_env.observation_space.shape[0], a3c_env.action_space.n).to(device)
+    load_model(a3c_model, "a3c_model.pth")
+
     # Plot all algorithms
     plot_all_algorithms(dqn_rewards, ppo_rewards, a3c_rewards)
+
 
 if __name__ == "__main__":
     main()
