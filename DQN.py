@@ -1,4 +1,3 @@
-# import os
 import random
 from collections import deque
 import matplotlib.pyplot as plt
@@ -18,7 +17,6 @@ def plot_dqn(dqn_rewards):
     plt.grid()
     plt.show()
 
-# Define DQN model
 class DQNModel(nn.Module):
     def __init__(self, state_size, action_size, hidden_layers=(512, 512)):
         super().__init__()

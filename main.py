@@ -1,12 +1,15 @@
-# import os
 import gymnasium as gym
 import A3C
 import DQN
 import PPO
 import Utils
+import torch
 
-# Main function
 def main():
+    print(f'PyTorch version: {torch.__version__}')
+    print(f'CUDNN version: {torch.backends.cudnn.version()}')
+    print(f'Device: {torch.cuda.get_device_name()}')
+
     max_episodes = 10000
     environment_name = "LunarLander-v3"
     # render_mode = "human"
@@ -29,13 +32,11 @@ def main():
     # a3c_model = A3CModel(a3c_env.observation_space.shape[0], a3c_env.action_space.n).to(device)
     # load_model(a3c_model, "a3c_model.pth")
 
-    # Plot all algorithms
 
 def DQNstart(environment_name, render_mode, max_episodes):
-    # DQN Configuration
     dqn_env = gym.make(environment_name, render_mode=render_mode)
     dqn_config = {
-        'lr': 1e-4,  # 0.0001
+        'lr': 1e-4,
         'gamma': 0.99,
         'epsilon_start': 1.0,
         'epsilon_end': 0.05,
@@ -50,10 +51,9 @@ def DQNstart(environment_name, render_mode, max_episodes):
     return dqn_rewards
 
 def A3Cstart(environment_name, render_mode, max_episodes):
-    # A3C Configuration
     a3c_env = gym.make(environment_name, render_mode=render_mode)
     a3c_config = {
-        'lr': 1e-4,  # 0.0001
+        'lr': 1e-4,
         'gamma': 0.99,
         'value_loss_coef': 0.5,
         'num_workers': 4,
@@ -66,11 +66,11 @@ def A3Cstart(environment_name, render_mode, max_episodes):
     return a3c_rewards
 
 def PPOstart(environment_name, render_mode, max_episodes):
-    # PPO Configuration
     ppo_env = gym.make(environment_name, render_mode=render_mode)
     ppo_config = {
-        'lr': 3e-4,  # 0.0003
-        'gamma': 0.99
+        'lr': 3e-4,  # Learning rate
+        'gamma': 0.99,  # Discount factor
+        'save_freq': 1000,  # Model saving frequency
     }
     ppo_trainer = PPO.PPOTrainer(ppo_env, ppo_env.observation_space.shape[0], ppo_env.action_space.n, ppo_config)
     ppo_rewards = ppo_trainer.train(max_episodes=max_episodes)

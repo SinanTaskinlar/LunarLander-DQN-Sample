@@ -1,16 +1,12 @@
-# import os
 from multiprocessing import Manager
 from multiprocessing import Process
-
 import gymnasium as gym
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.distributions import Categorical
-
 import Utils
-
 
 def plot_a3c(a3c_rewards):
     plt.figure(figsize=(10, 6))
@@ -22,8 +18,6 @@ def plot_a3c(a3c_rewards):
     plt.grid()
     plt.show()
 
-
-# Define A3C Model
 class A3CModel(nn.Module):
     def __init__(self, state_size, action_size, hidden_layers=(128, 128)):
         super().__init__()
@@ -43,13 +37,13 @@ class A3CModel(nn.Module):
         value = self.value_head(shared)
         return policy, value
 
-# Worker for A3C training
 class A3CWorker:
     def __init__(self, global_model, optimizer, env_name, config, worker_id, reward_list):
         self.global_model = global_model
         self.optimizer = optimizer
         self.env = gym.make(env_name)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(self.device)
         self.config = config
         self.worker_id = worker_id
         self.local_model = A3CModel(
@@ -123,7 +117,6 @@ class A3CWorker:
         # Synchronize local model with global model
         self.local_model.load_state_dict(self.global_model.state_dict())
 
-# Main A3C Training Process
 class A3CTrainer:
     def __init__(self, env, state_size, action_size, config):
         self.env = env

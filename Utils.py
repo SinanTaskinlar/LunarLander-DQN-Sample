@@ -20,10 +20,9 @@ def save_model(model, model_path):
 
 def load_model(model, model_path):
     model.load_state_dict(torch.load(model_path))
-    model.eval()  # Modeli değerlendirme (inference) moduna al
+    model.eval()
     print(f"Model loaded from {model_path}")
 
-# Utility class for wandb logging and reward plotting
 class PlotAndLog:
     def __init__(self, algorithm_name):
         self.algorithm_name = algorithm_name
@@ -35,6 +34,5 @@ class PlotAndLog:
         log_data.update(kwargs)
         # wandb.log(log_data)
 
-    # noinspection PyUnusedLocal
     def plot_rewards(self, rewards):
         print(f"Plotting rewards for {self.algorithm_name}.")
