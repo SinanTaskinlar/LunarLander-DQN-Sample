@@ -6,13 +6,12 @@ import torch.nn as nn
 import torch.optim as optim
 import Utils
 
-
 def plot_dqn(dqn_rewards):
     plt.figure(figsize=(10, 6))
     plt.plot(dqn_rewards, label="DQN", color="blue")
     plt.xlabel("Deneme Sayısı")
     plt.ylabel("Ödül Değeri")
-    plt.title("LunarLander Ortamında DQN-PPO-A3C Algoritma Karşılaştırması")
+    plt.title("LunarLander Ortamında DQN Algoritması Performansı")
     plt.legend()
     plt.grid()
     plt.show()
@@ -31,7 +30,6 @@ class DQNModel(nn.Module):
 
     def forward(self, x):
         return self.network(x)
-
 
 # Trainer for DQN
 class DQNTrainer:

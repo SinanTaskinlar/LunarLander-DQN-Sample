@@ -10,10 +10,10 @@ import Utils
 
 def plot_a3c(a3c_rewards):
     plt.figure(figsize=(10, 6))
-    plt.plot(a3c_rewards, label="DQN", color="blue")
+    plt.plot(a3c_rewards, label="A3C", color="yellow")
     plt.xlabel("Deneme Sayısı")
     plt.ylabel("Ödül Değeri")
-    plt.title("LunarLander Ortamında DQN-PPO-A3C Algoritma Karşılaştırması")
+    plt.title("LunarLander Ortamında A3C Algoritması Performansı")
     plt.legend()
     plt.grid()
     plt.show()
@@ -141,7 +141,7 @@ class A3CTrainer:
         for process in processes:
             process.join()
 
-        Utils.save_model(self.global_model, f"a3c_model.pth")
+        Utils.save_model(self.global_model, f"models/a3c/a3c_model.pth")
         print("A3C model saved.")
 
         return reward_list

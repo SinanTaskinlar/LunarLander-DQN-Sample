@@ -86,7 +86,7 @@ class PPOTrainer:
             next_values = torch.stack(next_values).to(self.device)
             dones = torch.tensor(dones).to(self.device)
 
-            advantages = compute_advantage(rewards_list, values, next_values, dones)
+            advantages = compute_advantage(rewards_list, values, next_values, dones, gamma=self.config['gamma'], lam=self.config['gae_lambda'])
 
             self._update_model(states, actions, advantages, values, rewards_list)
 
@@ -99,21 +99,21 @@ class PPOTrainer:
 
             if total_reward > best_reward:
                 best_reward = total_reward
-            elif episode > 100 and total_reward < best_reward * 0.9:
+            elif episode > 3000 and total_reward < best_reward * 0.9:
                 print(f"Early stopping at episode {episode} due to performance drop.")
                 break
 
             if episode % self.config.get('save_freq', 1000) == 0:
-                torch.save(self.model.state_dict(), f"ppo_model_{episode}.pth")
+                torch.save(self.model.state_dict(), f"models/ppo/ppo_model_{episode}.pth")
 
         return rewards
 
     def _update_model(self, states, actions, advantages, values, rewards):
-        states = torch.stack(states).float().to(self.device)
+        states = torch.stack(states).float().to(self.device)  # Ensuring float32 precision
         actions = torch.tensor(actions, dtype=torch.long).to(self.device)
         advantages = advantages.to(self.device)
         values = values.to(self.device)
-        rewards = rewards.to(self.device)
+        rewards = rewards.to(self.device).float()  # Explicitly setting rewards to float32
 
         old_policy, _ = self.model(states)
         old_log_probs = torch.log(old_policy.gather(1, actions.unsqueeze(1)).squeeze(1))
@@ -128,9 +128,19 @@ class PPOTrainer:
         _, new_value = self.model(states)
         value_loss = F.mse_loss(new_value.squeeze(), rewards)
 
-        loss = policy_loss + 0.5 * value_loss
+        # Entropy loss
+        entropy_loss = -(policy * torch.log(policy)).sum(dim=-1).mean()
+
+        # Total loss with entropy regularization
+        total_loss = policy_loss + 0.5 * value_loss - self.config['entropy_coeff'] * entropy_loss
+
         self.optimizer.zero_grad()
-        loss.backward()
+        total_loss.backward()
+
+        # Gradient clipping
+        if self.config.get('grad_clip'):
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.config['grad_clip'])
+
         self.optimizer.step()
 
     def evaluate_model(self, num_episodes=10):
@@ -150,10 +160,13 @@ class PPOTrainer:
 
 def plot_ppo(ppo_rewards):
     plt.figure(figsize=(10, 6))
-    plt.plot(ppo_rewards, label="PPO", color="blue")
+    plt.plot(ppo_rewards, label="PPO", color="green")
     plt.xlabel("Deneme Sayısı")
     plt.ylabel("Ödül Değeri")
     plt.title("LunarLander Ortamında PPO Algoritması Performansı")
     plt.legend()
     plt.grid()
     plt.show()
+
+# Configuration with the suggested updates
+
