@@ -17,6 +17,7 @@ def plot_a3c(a3c_rewards):
     plt.legend()
     plt.grid()
     plt.show()
+    plt.savefig("a3c.png", dpi=300, bbox_inches='tight')
 
 class A3CModel(nn.Module):
     def __init__(self, state_size, action_size, hidden_layers=(128, 128)):
@@ -85,7 +86,8 @@ class A3CWorker:
             # Compute advantages and update global model
             self._update_global_model(rewards, log_probs, values)
 
-            print(f"Worker {self.worker_id} | Episode {episode} | Reward: {total_reward}")
+            if episode % 30 == 0:
+                print(f"Worker {self.worker_id} | Episode {episode} | Reward: {total_reward}")
 
     def _update_global_model(self, rewards, log_probs, values):
         # Compute returns and advantages

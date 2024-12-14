@@ -1,4 +1,3 @@
-# import os
 import matplotlib.pyplot as plt
 import torch
 
@@ -13,6 +12,7 @@ def plot_all_algorithms(dqn_rewards, ppo_rewards, a3c_rewards):
     plt.legend()
     plt.grid()
     plt.show()
+    plt.savefig("all.png", dpi=300, bbox_inches='tight')
 
 def save_model(model, model_path):
     torch.save(model.state_dict(), model_path)

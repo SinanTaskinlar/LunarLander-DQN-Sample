@@ -15,6 +15,7 @@ def plot_dqn(dqn_rewards):
     plt.legend()
     plt.grid()
     plt.show()
+    plt.savefig("dqn.png", dpi=300, bbox_inches='tight')
 
 class DQNModel(nn.Module):
     def __init__(self, state_size, action_size, hidden_layers=(512, 512)):
@@ -31,7 +32,6 @@ class DQNModel(nn.Module):
     def forward(self, x):
         return self.network(x)
 
-# Trainer for DQN
 class DQNTrainer:
     def __init__(self, env, state_size, action_size, config):
         self.env = env
@@ -80,7 +80,8 @@ class DQNTrainer:
             if episode % self.config.get('save_freq', 1000) == 0:
                 Utils.save_model(self.model, f"models/dqn/dqn_model_{episode}.pth")
 
-            print(f"Episode {episode}, Reward: {total_reward}")
+            if episode % 30 == 0:
+                print(f"Episode {episode}, Reward: {total_reward}")
 
             if episode % self.config.get('target_update_freq', 10) == 0:
                 self.target_model.load_state_dict(self.model.state_dict())

@@ -7,14 +7,12 @@ import torch
 import time
 
 
-
-
 def main():
     print(f'PyTorch version: {torch.__version__}')
     print(f'CUDNN version: {torch.backends.cudnn.version()}')
     print(f'Device: {torch.cuda.get_device_name()}')
 
-    max_episodes = 5000
+    max_episodes = 10000
     environment_name = "LunarLander-v3"
     # render_mode = "human"
     render_mode = None
@@ -42,7 +40,6 @@ def main():
     # load_model(a3c_model, "a3c_model.pth")
 
 def DQNstart(environment_name, render_mode, max_episodes):
-
     dqn_env = gym.make(environment_name, render_mode=render_mode)
     dqn_config = {
         'lr': 1e-4,

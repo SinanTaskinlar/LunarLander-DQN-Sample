@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.nn.functional as F
+import torch.nn.functional as f
 import matplotlib.pyplot as plt
 
 class PPOModel(nn.Module):
@@ -91,7 +91,9 @@ class PPOTrainer:
             self._update_model(states, actions, advantages, values, rewards_list)
 
             rewards.append(total_reward)
-            print(f"Episode {episode}, Reward: {total_reward}")
+
+            if episode % 30 == 0:
+                print(f"Episode {episode}, Reward: {total_reward}")
 
             if episode % eval_freq == 0:
                 eval_reward = self.evaluate_model()
@@ -126,7 +128,7 @@ class PPOTrainer:
         policy_loss = -torch.min(obj, clipped_obj).mean()
 
         _, new_value = self.model(states)
-        value_loss = F.mse_loss(new_value.squeeze(), rewards)
+        value_loss = f.mse_loss(new_value.squeeze(), rewards)
 
         # Entropy loss
         entropy_loss = -(policy * torch.log(policy)).sum(dim=-1).mean()
@@ -167,6 +169,4 @@ def plot_ppo(ppo_rewards):
     plt.legend()
     plt.grid()
     plt.show()
-
-# Configuration with the suggested updates
-
+    plt.savefig("ppo.png", dpi=300, bbox_inches='tight')
