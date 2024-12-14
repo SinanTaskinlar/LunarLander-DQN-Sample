@@ -20,3 +20,5 @@ Eğitim süreci öncesi her algoritmanın hiperparametreleri ayarlanabilir.
 Sonuçlar
 Projenin sonunda her üç algoritmanın eğitim süreçleri ve ödül grafikleri karşılaştırılır.
 Devam ediyor...
+
+JB Cadence ile cloud üzerinde computing ayarlandı.
