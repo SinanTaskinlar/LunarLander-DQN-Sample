@@ -6,6 +6,9 @@ import Utils
 import torch
 import time
 
+
+
+
 def main():
     print(f'PyTorch version: {torch.__version__}')
     print(f'CUDNN version: {torch.backends.cudnn.version()}')
