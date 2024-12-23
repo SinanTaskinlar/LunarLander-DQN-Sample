@@ -1,12 +1,15 @@
 from multiprocessing import Manager
 from multiprocessing import Process
+
 import gymnasium as gym
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.distributions import Categorical
+
 import Utils
+
 
 def plot_a3c(a3c_rewards):
     plt.figure(figsize=(10, 6))
@@ -16,11 +19,12 @@ def plot_a3c(a3c_rewards):
     plt.title("LunarLander Ortamında A3C Algoritması Performansı")
     plt.legend()
     plt.grid()
-    plt.show()
     plt.savefig("a3c.png", dpi=300, bbox_inches='tight')
+    plt.show()
+
 
 class A3CModel(nn.Module):
-    def __init__(self, state_size, action_size, hidden_layers=(128, 128)):
+    def __init__(self, state_size, action_size, hidden_layers=(256, 256)):
         super().__init__()
         layers = []
         input_dim = state_size
@@ -37,6 +41,7 @@ class A3CModel(nn.Module):
         policy = torch.softmax(self.policy_head(shared), dim=-1)
         value = self.value_head(shared)
         return policy, value
+
 
 class A3CWorker:
     def __init__(self, global_model, optimizer, env_name, config, worker_id, reward_list):
@@ -118,6 +123,7 @@ class A3CWorker:
 
         # Synchronize local model with global model
         self.local_model.load_state_dict(self.global_model.state_dict())
+
 
 class A3CTrainer:
     def __init__(self, env, state_size, action_size, config):

@@ -1,8 +1,9 @@
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torch.nn.functional as f
-import matplotlib.pyplot as plt
+import torch.optim as optim
+
 
 class PPOModel(nn.Module):
     def __init__(self, state_size, action_size, hidden_layers=(256, 256), clip_ratio=0.2):
@@ -24,6 +25,7 @@ class PPOModel(nn.Module):
         value = self.value_head(shared)
         return policy, value
 
+
 def compute_advantage(rewards, values, next_values, dones, gamma=0.99, lam=0.95):
     dones = dones.float()
     deltas = rewards + gamma * next_values * (1 - dones) - values
@@ -33,6 +35,7 @@ def compute_advantage(rewards, values, next_values, dones, gamma=0.99, lam=0.95)
         advantage = delta + gamma * lam * advantage
         advantages.insert(0, advantage)
     return torch.stack(advantages).float()
+
 
 class PPOTrainer:
     def __init__(self, env, state_size, action_size, config):
@@ -86,7 +89,8 @@ class PPOTrainer:
             next_values = torch.stack(next_values).to(self.device)
             dones = torch.tensor(dones).to(self.device)
 
-            advantages = compute_advantage(rewards_list, values, next_values, dones, gamma=self.config['gamma'], lam=self.config['gae_lambda'])
+            advantages = compute_advantage(rewards_list, values, next_values, dones, gamma=self.config['gamma'],
+                                           lam=self.config['gae_lambda'])
 
             self._update_model(states, actions, advantages, values, rewards_list)
 
@@ -159,6 +163,7 @@ class PPOTrainer:
                 state = torch.FloatTensor(state).to(self.device)
                 total_reward += reward
         return total_reward / num_episodes
+
 
 def plot_ppo(ppo_rewards):
     plt.figure(figsize=(10, 6))

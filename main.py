@@ -1,30 +1,30 @@
+import time
+
 import gymnasium as gym
+
 import A3C
 import DQN
 import PPO
-import Utils
-import torch
-import time
 
 
 def main():
-    print(f'PyTorch version: {torch.__version__}')
-    print(f'CUDNN version: {torch.backends.cudnn.version()}')
-    print(f'Device: {torch.cuda.get_device_name()}')
+    # print(f'PyTorch version: {torch.__version__}')
+    # print(f'CUDNN version: {torch.backends.cudnn.version()}')
+    # print(f'Device: {torch.cuda.get_device_name()}')
 
-    max_episodes = 10000
+    max_episodes = 5000
     environment_name = "LunarLander-v3"
-    # render_mode = "human"
-    render_mode = None
+    render_mode = "human"
+    # render_mode = None
 
     dqn_rewards, dqn_time = DQNstart(environment_name, render_mode, max_episodes)
     print(f"DQN time: {dqn_time}")
 
-    a3c_rewards, a3c_time = A3Cstart(environment_name, render_mode, max_episodes)
-    print(f"A3C time: {a3c_time}")
+    # a3c_rewards, a3c_time = A3Cstart(environment_name, render_mode, max_episodes)
+    # print(f"A3C time: {a3c_time}")
 
-    ppo_rewards, ppo_time = PPOstart(environment_name, render_mode, max_episodes)
-    print(f"PPO time: {ppo_time}")
+    # ppo_rewards, ppo_time = PPOstart(environment_name, render_mode, max_episodes)
+    # print(f"PPO time: {ppo_time}")
 
     # Utils.plot_all_algorithms(dqn_rewards, ppo_rewards, a3c_rewards)
 
@@ -38,6 +38,7 @@ def main():
     # load_model(ppo_model, "ppo_model_500.pth")
     # a3c_model = A3CModel(a3c_env.observation_space.shape[0], a3c_env.action_space.n).to(device)
     # load_model(a3c_model, "a3c_model.pth")
+
 
 def DQNstart(environment_name, render_mode, max_episodes):
     dqn_env = gym.make(environment_name, render_mode=render_mode)
@@ -58,12 +59,13 @@ def DQNstart(environment_name, render_mode, max_episodes):
     DQN.plot_dqn(dqn_rewards)
     return dqn_rewards, dqn_stop_time - dqn_start_time
 
+
 def A3Cstart(environment_name, render_mode, max_episodes):
     a3c_env = gym.make(environment_name, render_mode=render_mode)
     a3c_config = {
-        'lr': 1e-4,
-        'gamma': 0.99,
-        'value_loss_coef': 0.5,
+        'lr': 5e-5,
+        'gamma': 0.995,
+        'value_loss_coef': 0.26,
         'num_workers': 4,
         'max_episodes': int(max_episodes / 4)
     }
@@ -75,6 +77,7 @@ def A3Cstart(environment_name, render_mode, max_episodes):
 
     A3C.plot_a3c(a3c_rewards)
     return a3c_rewards, a3c_stop_time - a3c_start_time
+
 
 def PPOstart(environment_name, render_mode, max_episodes):
     ppo_env = gym.make(environment_name, render_mode=render_mode)
@@ -93,6 +96,7 @@ def PPOstart(environment_name, render_mode, max_episodes):
     ppo_stop_time = time.time()
     PPO.plot_ppo(ppo_rewards)
     return ppo_rewards, ppo_stop_time - ppo_start_time
+
 
 if __name__ == "__main__":
     main()
