@@ -1,10 +1,13 @@
 import random
+import time
 from collections import deque
+import gymnasium as gym
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import Utils
+from Utilities import Utils
+
 
 def plot_dqn(dqn_rewards):
     plt.figure(figsize=(10, 6))
@@ -16,6 +19,7 @@ def plot_dqn(dqn_rewards):
     plt.grid()
     plt.show()
     plt.savefig("dqn.png", dpi=300, bbox_inches='tight')
+
 
 class DQNModel(nn.Module):
     def __init__(self, state_size, action_size, hidden_layers=(512, 512)):
@@ -31,6 +35,7 @@ class DQNModel(nn.Module):
 
     def forward(self, x):
         return self.network(x)
+
 
 class DQNTrainer:
     def __init__(self, env, state_size, action_size, config):
@@ -115,3 +120,23 @@ class DQNTrainer:
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+
+
+def DQNstart(environment_name="LunarLander-v3", render_mode=None, max_episodes=5000):
+    dqn_env = gym.make(environment_name, render_mode=render_mode)
+    dqn_config = {
+        'lr': 1e-4,
+        'gamma': 0.99,
+        'epsilon_start': 1.0,
+        'epsilon_end': 0.05,
+        'epsilon_decay': 0.9995,
+        'batch_size': 32,
+        'memory_size': 10000,
+        'target_update_freq': 30
+    }
+    dqn_trainer = DQNTrainer(dqn_env, dqn_env.observation_space.shape[0], dqn_env.action_space.n, dqn_config)
+    dqn_start_time = time.time()
+    dqn_rewards = dqn_trainer.train(max_episodes=max_episodes)
+    dqn_stop_time = time.time()
+    plot_dqn(dqn_rewards)
+    return dqn_rewards, dqn_stop_time - dqn_start_time
