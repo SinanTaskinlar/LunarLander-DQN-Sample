@@ -4,7 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as f
 import torch.optim as optim
 
-
 class PPOModel(nn.Module):
     def __init__(self, state_size, action_size, hidden_layers=(256, 256), clip_ratio=0.2):
         super(PPOModel, self).__init__()
@@ -25,7 +24,6 @@ class PPOModel(nn.Module):
         value = self.value_head(shared)
         return policy, value
 
-
 def compute_advantage(rewards, values, next_values, dones, gamma=0.99, lam=0.95):
     dones = dones.float()
     deltas = rewards + gamma * next_values * (1 - dones) - values
@@ -35,7 +33,6 @@ def compute_advantage(rewards, values, next_values, dones, gamma=0.99, lam=0.95)
         advantage = delta + gamma * lam * advantage
         advantages.insert(0, advantage)
     return torch.stack(advantages).float()
-
 
 class PPOTrainer:
     def __init__(self, env, state_size, action_size, config):
@@ -115,11 +112,11 @@ class PPOTrainer:
         return rewards
 
     def _update_model(self, states, actions, advantages, values, rewards):
-        states = torch.stack(states).float().to(self.device)  # Ensuring float32 precision
+        states = torch.stack(states).float().to(self.device)
         actions = torch.tensor(actions, dtype=torch.long).to(self.device)
         advantages = advantages.to(self.device)
         values = values.to(self.device)
-        rewards = rewards.to(self.device).float()  # Explicitly setting rewards to float32
+        rewards = rewards.to(self.device).float()
 
         old_policy, _ = self.model(states)
         old_log_probs = torch.log(old_policy.gather(1, actions.unsqueeze(1)).squeeze(1))
@@ -134,16 +131,13 @@ class PPOTrainer:
         _, new_value = self.model(states)
         value_loss = f.mse_loss(new_value.squeeze(), rewards)
 
-        # Entropy loss
         entropy_loss = -(policy * torch.log(policy)).sum(dim=-1).mean()
 
-        # Total loss with entropy regularization
         total_loss = policy_loss + 0.5 * value_loss - self.config['entropy_coeff'] * entropy_loss
 
         self.optimizer.zero_grad()
         total_loss.backward()
 
-        # Gradient clipping
         if self.config.get('grad_clip'):
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.config['grad_clip'])
 
@@ -163,7 +157,6 @@ class PPOTrainer:
                 state = torch.FloatTensor(state).to(self.device)
                 total_reward += reward
         return total_reward / num_episodes
-
 
 def plot_ppo(ppo_rewards):
     plt.figure(figsize=(10, 6))

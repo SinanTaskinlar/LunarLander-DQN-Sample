@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import torch
 
-
 def plot_all_algorithms(dqn_rewards, ppo_rewards, a3c_rewards):
     plt.figure(figsize=(10, 6))
     plt.plot(dqn_rewards, label="DQN", color="blue")
@@ -15,17 +14,14 @@ def plot_all_algorithms(dqn_rewards, ppo_rewards, a3c_rewards):
     plt.show()
     plt.savefig("all.png", dpi=300, bbox_inches='tight')
 
-
 def save_model(model, model_path):
     torch.save(model.state_dict(), model_path)
     print(f"Model saved at {model_path}")
-
 
 def load_model(model, model_path):
     model.load_state_dict(torch.load(model_path))
     model.eval()
     print(f"Model loaded from {model_path}")
-
 
 class PlotAndLog:
     def __init__(self, algorithm_name):

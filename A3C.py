@@ -1,36 +1,38 @@
 from multiprocessing import Manager
 from multiprocessing import Process
-
 import gymnasium as gym
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.distributions import Categorical
-
 import Utils
 
+def smooth_rewards(rewards, window=50):
+    return np.convolve(rewards, np.ones(window) / window, mode='valid')
 
 def plot_a3c(a3c_rewards):
+    smoothed = smooth_rewards(a3c_rewards)
     plt.figure(figsize=(10, 6))
-    plt.plot(a3c_rewards, label="A3C", color="yellow")
+    plt.plot(a3c_rewards, label="A3C Raw", color="yellow", alpha=0.5)
+    plt.plot(smoothed, label="Smoothed", color="blue")
     plt.xlabel("Deneme Sayısı")
     plt.ylabel("Ödül Değeri")
     plt.title("LunarLander Ortamında A3C Algoritması Performansı")
     plt.legend()
     plt.grid()
-    plt.savefig("a3c.png", dpi=300, bbox_inches='tight')
+    plt.savefig("a3c_smoothed.png", dpi=300, bbox_inches='tight')
     plt.show()
 
-
 class A3CModel(nn.Module):
-    def __init__(self, state_size, action_size, hidden_layers=(256, 256)):
+    def __init__(self, state_size, action_size, hidden_layers=(256, 128)):
         super().__init__()
         layers = []
         input_dim = state_size
         for layer_size in hidden_layers:
             layers.append(nn.Linear(input_dim, layer_size))
-            layers.append(nn.ReLU())
+            layers.append(nn.LeakyReLU())
             input_dim = layer_size
         self.shared_layers = nn.Sequential(*layers)
         self.policy_head = nn.Linear(input_dim, action_size)
@@ -42,14 +44,13 @@ class A3CModel(nn.Module):
         value = self.value_head(shared)
         return policy, value
 
-
+# noinspection PyTypeChecker
 class A3CWorker:
     def __init__(self, global_model, optimizer, env_name, config, worker_id, reward_list):
         self.global_model = global_model
         self.optimizer = optimizer
         self.env = gym.make(env_name)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        print(self.device)
         self.config = config
         self.worker_id = worker_id
         self.local_model = A3CModel(
@@ -78,6 +79,10 @@ class A3CWorker:
 
                 next_state, reward, done, truncated, _ = self.env.step(action.item())
                 done = done or truncated
+
+                # Reward clipping
+                reward = max(min(reward, 1), -1)
+
                 rewards.append(reward)
                 total_reward += reward
                 state = torch.FloatTensor(next_state).to(self.device)
@@ -85,17 +90,13 @@ class A3CWorker:
                 if done:
                     break
 
-            # Store rewards for this worker in shared reward list
             self.reward_list.append(total_reward)
-
-            # Compute advantages and update global model
             self._update_global_model(rewards, log_probs, values)
 
             if episode % 30 == 0:
                 print(f"Worker {self.worker_id} | Episode {episode} | Reward: {total_reward}")
 
     def _update_global_model(self, rewards, log_probs, values):
-        # Compute returns and advantages
         returns = []
         g = 0
         for r in reversed(rewards):
@@ -108,12 +109,14 @@ class A3CWorker:
 
         advantages = returns - values.detach()
 
-        # Policy loss and value loss
+        # Entropy loss for exploration
+        entropy_loss = -torch.sum(torch.log(log_probs.exp() + 1e-10) * log_probs.exp(), dim=0).mean()
+
         policy_loss = -(log_probs * advantages).mean()
         value_loss = nn.MSELoss()(values, returns)
 
-        # Backpropagation
-        loss = policy_loss + self.config['value_loss_coef'] * value_loss
+        # Total loss
+        loss = policy_loss + self.config['value_loss_coef'] * value_loss - 0.01 * entropy_loss
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -121,9 +124,7 @@ class A3CWorker:
             global_param._grad = local_param.grad
         self.optimizer.step()
 
-        # Synchronize local model with global model
         self.local_model.load_state_dict(self.global_model.state_dict())
-
 
 class A3CTrainer:
     def __init__(self, env, state_size, action_size, config):
@@ -138,7 +139,7 @@ class A3CTrainer:
 
     def train(self):
         manager = Manager()
-        reward_list = manager.list()  # Paylaşımlı ödül listesi. Plotting için bu şekilde yapıldı
+        reward_list = manager.list()
         processes = []
         for worker_id in range(self.config['num_workers']):
             worker = A3CWorker(self.global_model, self.optimizer, self.env, self.config, worker_id, reward_list)
@@ -152,4 +153,4 @@ class A3CTrainer:
         Utils.save_model(self.global_model, f"models/a3c/a3c_model.pth")
         print("A3C model saved.")
 
-        return reward_list
+        return list(reward_list)

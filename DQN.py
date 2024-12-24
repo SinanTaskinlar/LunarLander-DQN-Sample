@@ -1,13 +1,10 @@
 import random
 from collections import deque
-
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
 import Utils
-
 
 def plot_dqn(dqn_rewards):
     plt.figure(figsize=(10, 6))
@@ -19,7 +16,6 @@ def plot_dqn(dqn_rewards):
     plt.grid()
     plt.show()
     plt.savefig("dqn.png", dpi=300, bbox_inches='tight')
-
 
 class DQNModel(nn.Module):
     def __init__(self, state_size, action_size, hidden_layers=(512, 512)):
@@ -35,7 +31,6 @@ class DQNModel(nn.Module):
 
     def forward(self, x):
         return self.network(x)
-
 
 class DQNTrainer:
     def __init__(self, env, state_size, action_size, config):
