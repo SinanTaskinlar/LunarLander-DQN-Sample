@@ -83,7 +83,7 @@ class DQNTrainer:
             # self.plot_and_log.log(episode, total_reward)
 
             if episode % self.config.get('save_freq', 1000) == 0:
-                Utils.save_model(self.model, f"models/dqn/dqn_model_{episode}.pth")
+                Utils.save_model(self.model, f"SavedModels/dqn/dqn_model_{episode}.pth")
 
             if episode % 30 == 0:
                 print(f"Episode {episode}, Reward: {total_reward}")

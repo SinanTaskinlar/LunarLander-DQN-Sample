@@ -1,3 +1,4 @@
+swig
 torch~=2.5.1
 matplotlib~=3.9.2
 gymnasium[box2d]~=1.0.0

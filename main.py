@@ -1,4 +1,5 @@
-import Models.PPO as PPO
+import Models.PPO as PPO,Models.DQN as DQN,Models.A3C as A3C
+import Utilities.Utils as Utils
 import torch
 
 def main():
@@ -6,22 +7,22 @@ def main():
     print(f'CUDNN version: {torch.backends.cudnn.version()}')
     print(f'Device: {torch.cuda.get_device_name()}')
 
-    max_episodes = 100
+    max_episodes = 5000
     environment_name = "LunarLander-v3"
     # render_mode = "human"
     # render_mode = "rgb_array"
     render_mode = None
 
-    # dqn_rewards, dqn_time = DQN.DQNstart(environment_name, render_mode, max_episodes)
-    # print(f"DQN time: {dqn_time}")
+    dqn_rewards, dqn_time = DQN.DQNstart(environment_name, render_mode, max_episodes)
+    print(f"DQN time: {dqn_time}")
 
-    # a3c_rewards, a3c_time = A3C.A3Cstart(environment_name, render_mode, max_episodes)
-    # print(f"A3C time: {a3c_time}")
+    a3c_rewards, a3c_time = A3C.A3Cstart(environment_name, render_mode, max_episodes)
+    print(f"A3C time: {a3c_time}")
 
     ppo_rewards, ppo_time = PPO.PPOstart(environment_name, render_mode, max_episodes)
     print(f"PPO time: {ppo_time:.1f} seconds")
 
-    # Utils.plot_all_algorithms(dqn_rewards, ppo_rewards, a3c_rewards)
+    Utils.plot_all_algorithms(dqn_rewards, ppo_rewards, a3c_rewards)
 
     # Kaydedilen modeli yüklemek
 

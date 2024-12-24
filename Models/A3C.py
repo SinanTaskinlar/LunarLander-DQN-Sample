@@ -61,6 +61,13 @@ class A3CWorker:
             self.env.action_space.n
         ).to(self.device)
         self.reward_list = reward_list
+        self.memory_size = 1000
+        self.memory = []
+
+    def _store_transition(self, state, action, reward, next_state, done):
+        if len(self.memory) >= self.memory_size:
+            self.memory.pop(0)
+        self.memory.append((state, action, reward, next_state, done))
 
     def train(self):
         for episode in range(self.config['max_episodes']):
@@ -125,9 +132,25 @@ class A3CWorker:
         loss.backward()
         for global_param, local_param in zip(self.global_model.parameters(), self.local_model.parameters()):
             global_param._grad = local_param.grad
+        torch.nn.utils.clip_grad_norm_(self.local_model.parameters(), max_norm=0.5)
         self.optimizer.step()
 
         self.local_model.load_state_dict(self.global_model.state_dict())
+
+    def _compute_gae(self, rewards, values, next_value, done):
+        gae = 0
+        returns = []
+        for step in reversed(range(len(rewards))):
+            if step == len(rewards) - 1:
+                next_value = 0 if done else next_value
+            else:
+                next_value = values[step + 1]
+            
+            delta = rewards[step] + self.config['gamma'] * next_value - values[step]
+            gae = delta + self.config['gamma'] * self.config['gae_lambda'] * gae
+            returns.insert(0, gae + values[step])
+        
+        return returns
 
 
 class A3CTrainer:
@@ -140,6 +163,9 @@ class A3CTrainer:
             torch.device("cuda" if torch.cuda.is_available() else "cpu"))
         self.global_model.share_memory()
         self.optimizer = optim.Adam(self.global_model.parameters(), lr=config['lr'])
+        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, 
+                                                 step_size=100, 
+                                                 gamma=0.95)
 
     def train(self):
         manager = Manager()
@@ -154,7 +180,7 @@ class A3CTrainer:
         for process in processes:
             process.join()
 
-        Utils.save_model(self.global_model, f"models/a3c/a3c_model.pth")
+        Utils.save_model(self.global_model, f"SavedModels/a3c/a3c_model.pth")
         print("A3C model saved.")
 
         return list(reward_list)
@@ -163,11 +189,14 @@ class A3CTrainer:
 def A3Cstart(environment_name="LunarLander-v3", render_mode=None, max_episodes=5000):
     a3c_env = gym.make(environment_name, render_mode=render_mode)
     a3c_config = {
-        'lr': 1e-3,
-        'gamma': 0.98,
-        'value_loss_coef': 0.20,
+        'lr': 3e-4,
+        'gamma': 0.99,
+        'value_loss_coef': 0.5,
         'num_workers': 8,
-        'max_episodes': int(max_episodes / 4)
+        'max_episodes': int(max_episodes / 4),
+        'entropy_coef': 0.01,
+        'max_grad_norm': 0.5,
+        'gae_lambda': 0.95,
     }
     a3c_trainer = A3CTrainer(environment_name, a3c_env.observation_space.shape[0], a3c_env.action_space.n,
                              a3c_config)
