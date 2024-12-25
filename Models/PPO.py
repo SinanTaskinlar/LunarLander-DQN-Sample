@@ -5,16 +5,17 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as f
 import torch.optim as optim
+import numpy as np
 
 
 class PPOModel(nn.Module):
-    def __init__(self, state_size, action_size, hidden_layers=(256, 256), clip_ratio=0.2):
+    def __init__(self, state_size, action_size, hidden_layers=(128, 128), clip_ratio=0.2):
         super(PPOModel, self).__init__()
         layers = []
         input_dim = state_size
         for layer_size in hidden_layers:
             layers.append(nn.Linear(input_dim, layer_size))
-            layers.append(nn.ReLU())
+            layers.append(nn.LeakyReLU())
             input_dim = layer_size
         self.shared_layers = nn.Sequential(*layers)
         self.policy_head = nn.Linear(input_dim, action_size)
@@ -37,6 +38,13 @@ class PPOTrainer:
         self.config = config
         self.model = PPOModel(state_size, action_size).to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=config['lr'])
+        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            self.optimizer, 
+            mode='max', 
+            factor=0.5, 
+            patience=100,
+            verbose=True
+        )
         self.clip_ratio = self.model.clip_ratio
 
         self.running_mean = torch.zeros(state_size).to(self.device)
@@ -45,59 +53,48 @@ class PPOTrainer:
         self.num_updates = 0
 
     def train(self, max_episodes, max_timesteps_per_episode=1000, eval_freq=100):
-        rewards = []
         best_reward = -float('inf')
+        episode_rewards = []
+        
         for episode in range(max_episodes):
             state, _ = self.env.reset()
             state = torch.FloatTensor(state).to(self.device)
             total_reward = 0
             done = False
-            values = []
-            actions = []
-            states = []
-            rewards_list = []
-            dones = []
-            next_values = []
-
+            
             while not done:
-                # Gözlemi normalize et
                 state = self.normalize_state(state)
                 policy, value = self.model(state)
                 action = torch.distributions.Categorical(policy).sample().item()
 
                 next_state, reward, done, truncated, _ = self.env.step(action)
                 done = done or truncated
+                
+                # Reward clipping ve scaling
+                reward = np.clip(reward, -10, 10) * self.config['reward_scale']
+                
                 next_state = torch.FloatTensor(next_state).to(self.device)
-
-                values.append(value)
-                actions.append(action)
-                states.append(state)  # Gözlem burada normalleşmiş olarak ekleniyor
-                rewards_list.append(reward)
-                dones.append(done)
-                next_values.append(
-                    self.model(self.normalize_state(next_state))[1])  # Sonraki state'ide normalize ediyoruz.
-
-                state = next_state
                 total_reward += reward
-                rewards.append(total_reward)
 
-                if len(states) >= max_timesteps_per_episode:
+                # ... mevcut training kodu ...
+
+                if total_reward >= self.config['early_stop_reward']:
+                    print(f"Erken durma: Episode {episode} başarıyla tamamlandı!")
                     break
 
-            values = torch.stack(values)
-            rewards_list = torch.tensor(rewards_list).to(self.device)
-            next_values = torch.stack(next_values).to(self.device)
-            dones = torch.tensor(dones).to(self.device)
+            episode_rewards.append(total_reward)
+            
+            # Her 100 episode'da bir ortalama ödülü yazdır
+            if episode % 100 == 0:
+                avg_reward = np.mean(episode_rewards[-100:])
+                print(f"Episode {episode}, Ortalama Ödül: {avg_reward:.2f}")
+                
+                # En iyi modeli kaydet
+                if avg_reward > best_reward:
+                    best_reward = avg_reward
+                    torch.save(self.model.state_dict(), "best_lunarlander_model.pth")
 
-            if episode % 30 == 0:
-                print(f"Episode {episode}, Reward: {total_reward}")
-
-            # Gözlemleri güncelle
-            self.update_running_stats(states)
-
-            advantages = compute_advantage(rewards_list, values, next_values, dones, gamma=self.config['gamma'],
-                                           lam=self.config['gae_lambda'])
-        return rewards
+        return episode_rewards
 
     def _update_model(self, states, actions, advantages, values, rewards):
         states = torch.stack(states).float().to(self.device)
@@ -170,23 +167,26 @@ class PPOTrainer:
         batch_mean = torch.mean(states, dim=0)
         batch_std = torch.std(states, dim=0)
 
-        self.num_updates += 1
-        self.running_mean = (
-                                        self.num_updates - 1) / self.num_updates * self.running_mean + batch_mean / self.num_updates
-        self.running_std = torch.sqrt(((self.num_updates - 1) / self.num_updates) * self.running_std ** 2 + (
-                batch_std ** 2) / self.num_updates + (self.num_updates - 1) * (
-                                              batch_mean - self.running_mean) ** 2 / (self.num_updates ** 2))
+        # Daha yumuşak güncelleme için momentum ekleyelim
+        momentum = 0.99
+        self.running_mean = momentum * self.running_mean + (1-momentum) * batch_mean
+        self.running_std = momentum * self.running_std + (1-momentum) * batch_std
 
 
 def compute_advantage(rewards, values, next_values, dones, gamma=0.99, lam=0.95):
     dones = dones.float()
-    deltas = rewards + gamma * next_values * (1 - dones) - values
-    advantages = []
+    deltas = rewards + gamma * next_values * (1 - dones) - values.squeeze()
+    advantages = torch.zeros_like(deltas)
     advantage = 0
-    for delta in deltas.flip(0):
-        advantage = delta + gamma * lam * advantage
-        advantages.insert(0, advantage.detach().mean().item())  # ortalamayı alıp skalar değere dönüştürdük
-    return torch.tensor(advantages).float().to(rewards.device)
+    
+    # Avantajları geriye doğru hesapla
+    for t in reversed(range(len(deltas))):
+        advantage = deltas[t] + gamma * lam * advantage * (1 - dones[t])
+        advantages[t] = advantage
+    
+    # Avantajları normalize et
+    advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+    return advantages
 
 
 def plot_ppo(ppo_rewards):
@@ -201,24 +201,31 @@ def plot_ppo(ppo_rewards):
     plt.title("LunarLander Ortamında PPO Algoritması Performansı")
     plt.legend()
     plt.grid()
-    plt.savefig("ppo.png", dpi=300, bbox_inches='tight')
+    
+    # Önce kaydet, sonra göster
+    plt.savefig("ppo_results.png", dpi=300, bbox_inches='tight')
     plt.show()
+    plt.close()  # Belleği temizle
 
 
 def PPOstart(environment_name="LunarLander-v3", render_mode=None, max_episodes=5000):
     ppo_env = gym.make(environment_name, render_mode=render_mode)
     ppo_config = {
-        'lr': 2e-4,
-        'gamma': 0.95,
+        'lr': 3e-4,
+        'gamma': 0.99,
         'save_freq': 1000,
         'clip_ratio': 0.2,
         'entropy_coeff': 0.01,
         'gae_lambda': 0.95,
         'grad_clip': 0.5,
-        'batch_size': 128,
-        'buffer_size': 4096,
-        'num_epochs': 4,
-        'target_kl': 0.01
+        'batch_size': 64,
+        'buffer_size': 2048,
+        'num_epochs': 10,
+        'target_kl': 0.01,
+        # LunarLander için özel parametreler
+        'reward_scale': 0.1,  # Ödülleri ölçeklendir
+        'max_timesteps': 1000,  # Her episode için maksimum adım
+        'early_stop_reward': 200  # Bu ödüle ulaşınca erken bitir
     }
     ppo_trainer = PPOTrainer(ppo_env, ppo_env.observation_space.shape[0], ppo_env.action_space.n, ppo_config)
     ppo_start_time = time.time()

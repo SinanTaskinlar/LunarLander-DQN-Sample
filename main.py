@@ -7,7 +7,7 @@ def main():
     print(f'CUDNN version: {torch.backends.cudnn.version()}')
     print(f'Device: {torch.cuda.get_device_name()}')
 
-    max_episodes = 5000
+    max_episodes = 50
     environment_name = "LunarLander-v3"
     # render_mode = "human"
     # render_mode = "rgb_array"
