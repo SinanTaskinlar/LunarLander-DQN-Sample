@@ -14,6 +14,11 @@ def plot_all_algorithms(dqn_rewards, ppo_rewards, a3c_rewards):
     plt.show()
     plt.savefig("all.png", dpi=300, bbox_inches='tight')
 
+def print_all_times(dqn_time, a3c_time, ppo_time):
+    print(f"DQN time: {dqn_time:.1f} seconds")
+    print(f"A3C time: {a3c_time:.1f} seconds")
+    print(f"PPO time: {ppo_time:.1f} seconds")
+
 def save_model(model, model_path):
     torch.save(model.state_dict(), model_path)
     print(f"Model saved at {model_path}")

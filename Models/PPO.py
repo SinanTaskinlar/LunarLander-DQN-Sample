@@ -9,7 +9,7 @@ import numpy as np
 
 
 class PPOModel(nn.Module):
-    def __init__(self, state_size, action_size, hidden_layers=(128, 128), clip_ratio=0.2):
+    def __init__(self, state_size, action_size, hidden_layers=(256, 256), clip_ratio=0.1):
         super(PPOModel, self).__init__()
         layers = []
         input_dim = state_size
@@ -42,8 +42,7 @@ class PPOTrainer:
             self.optimizer, 
             mode='max', 
             factor=0.5, 
-            patience=100,
-            verbose=True
+            patience=100
         )
         self.clip_ratio = self.model.clip_ratio
 
@@ -211,20 +210,20 @@ def plot_ppo(ppo_rewards):
 def PPOstart(environment_name="LunarLander-v3", render_mode=None, max_episodes=5000):
     ppo_env = gym.make(environment_name, render_mode=render_mode)
     ppo_config = {
-        'lr': 3e-4,
+        'lr': 1e-4,
         'gamma': 0.99,
         'save_freq': 1000,
-        'clip_ratio': 0.2,
+        'clip_ratio': 0.1,
         'entropy_coeff': 0.01,
-        'gae_lambda': 0.95,
-        'grad_clip': 0.5,
-        'batch_size': 64,
+        'gae_lambda': 0.99,
+        'grad_clip': 0.4,
+        'batch_size': 128,
         'buffer_size': 2048,
         'num_epochs': 10,
         'target_kl': 0.01,
         # LunarLander için özel parametreler
         'reward_scale': 0.1,  # Ödülleri ölçeklendir
-        'max_timesteps': 1000,  # Her episode için maksimum adım
+        'max_timesteps': 5000,  # Her episode için maksimum adım
         'early_stop_reward': 200  # Bu ödüle ulaşınca erken bitir
     }
     ppo_trainer = PPOTrainer(ppo_env, ppo_env.observation_space.shape[0], ppo_env.action_space.n, ppo_config)

@@ -4,26 +4,32 @@ import torch
 
 def main():
     print(f'PyTorch version: {torch.__version__}')
-    print(f'CUDNN version: {torch.backends.cudnn.version()}')
-    print(f'Device: {torch.cuda.get_device_name()}')
+    cudnn_version = torch.backends.cudnn.version()
+    print(f'CUDNN version: {cudnn_version if cudnn_version else "None"}')
 
-    max_episodes = 50
+    if torch.cuda.is_available():
+        print(f'Device: {torch.cuda.get_device_name(0)}')
+    else:
+        print("CUDA desteklenmiyor, sadece CPU kullanılacak.")
+
+    max_episodes = 50000
     environment_name = "LunarLander-v3"
     # render_mode = "human"
     # render_mode = "rgb_array"
     render_mode = None
 
-    dqn_rewards, dqn_time = DQN.DQNstart(environment_name, render_mode, max_episodes)
-    print(f"DQN time: {dqn_time}")
-
-    a3c_rewards, a3c_time = A3C.A3Cstart(environment_name, render_mode, max_episodes)
-    print(f"A3C time: {a3c_time}")
+    # dqn_rewards, dqn_time = DQN.DQNstart(environment_name, render_mode, max_episodes)
+    # print(f"DQN time: {dqn_time:.1f} seconds")
+    #
+    # a3c_rewards, a3c_time = A3C.A3Cstart(environment_name, render_mode, max_episodes)
+    # print(f"A3C time: {a3c_time:.1f} seconds")
 
     ppo_rewards, ppo_time = PPO.PPOstart(environment_name, render_mode, max_episodes)
     print(f"PPO time: {ppo_time:.1f} seconds")
 
-    Utils.plot_all_algorithms(dqn_rewards, ppo_rewards, a3c_rewards)
-
+    # Utils.plot_all_algorithms(dqn_rewards, ppo_rewards, a3c_rewards)
+    # print("Tüm eğitimler tamamlandı.")
+    # Utils.print_all_times(dqn_time, a3c_time, ppo_time)
     # Kaydedilen modeli yüklemek
 
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
