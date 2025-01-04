@@ -12,7 +12,7 @@ def main():
     else:
         print("CUDA desteklenmiyor, sadece CPU kullanılacak.")
 
-    max_episodes = 50000
+    max_episodes = 5000
     environment_name = "LunarLander-v3"
     # render_mode = "human"
     # render_mode = "rgb_array"
