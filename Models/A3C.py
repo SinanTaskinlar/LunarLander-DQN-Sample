@@ -9,10 +9,8 @@ import torch.optim as optim
 from torch.distributions import Categorical
 from Utilities import Utils
 
-
 def smooth_rewards(rewards, window=50):
     return np.convolve(rewards, np.ones(window) / window, mode='valid')
-
 
 def plot_a3c(a3c_rewards):
     smoothed = smooth_rewards(a3c_rewards)
@@ -26,7 +24,6 @@ def plot_a3c(a3c_rewards):
     plt.grid()
     plt.savefig("a3c_smoothed.png", dpi=300, bbox_inches='tight')
     plt.show()
-
 
 class A3CModel(nn.Module):
     def __init__(self, state_size, action_size, hidden_layers=(256, 128)):
@@ -47,7 +44,6 @@ class A3CModel(nn.Module):
         value = self.value_head(shared)
         return policy, value
 
-
 class A3CWorker:
     def __init__(self, global_model, optimizer, env_name, config, worker_id, reward_list):
         self.global_model = global_model
@@ -63,6 +59,7 @@ class A3CWorker:
         self.reward_list = reward_list
         self.memory_size = 1000
         self.memory = []
+        self.reward_scaling = config.get('reward_scaling', 0.1)
 
     def _store_transition(self, state, action, reward, next_state, done):
         if len(self.memory) >= self.memory_size:
@@ -78,6 +75,7 @@ class A3CWorker:
             log_probs = []
             values = []
             rewards = []
+            states = []
 
             while not done:
                 policy, value = self.local_model(state)
@@ -86,11 +84,13 @@ class A3CWorker:
 
                 log_probs.append(action_dist.log_prob(action))
                 values.append(value)
+                states.append(state)
 
                 next_state, reward, done, truncated, _ = self.env.step(action.item())
                 done = done or truncated
 
-                # Reward clipping
+                # Reward scaling ve clipping
+                reward *= self.reward_scaling
                 reward = max(min(reward, 1), -1)
 
                 rewards.append(reward)
@@ -101,22 +101,25 @@ class A3CWorker:
                     break
 
             self.reward_list.append(total_reward)
-            self._update_global_model(rewards, log_probs, values)
+            self._update_global_model(rewards, log_probs, values, states, done)
 
             if episode % 30 == 0:
                 print(f"Worker {self.worker_id} | Episode {episode} | Reward: {total_reward}")
 
-    def _update_global_model(self, rewards, log_probs, values):
-        returns = []
-        g = 0
-        for r in reversed(rewards):
-            g = r + self.config['gamma'] * g
-            returns.insert(0, g)
+    def _update_global_model(self, rewards, log_probs, values, states, done):
 
+        states = torch.stack(states).to(self.device)
+        values = torch.cat(values).squeeze(-1).to(self.device)
+
+        with torch.no_grad():
+            if done:
+                next_value = torch.tensor(0.0, device=self.device)
+            else:
+                next_value = self.local_model(states[-1].unsqueeze(0))[1].squeeze(-1)
+
+        returns = self._compute_gae(rewards, values, next_value, done)
         returns = torch.FloatTensor(returns).to(self.device)
-        log_probs = torch.stack(log_probs)
-        values = torch.cat(values)
-
+        log_probs = torch.stack(log_probs).to(self.device)
         advantages = returns - values.detach()
 
         # Entropy loss for exploration
@@ -126,7 +129,7 @@ class A3CWorker:
         value_loss = nn.MSELoss()(values, returns)
 
         # Total loss
-        loss = policy_loss + self.config['value_loss_coef'] * value_loss - 0.01 * entropy_loss
+        loss = policy_loss + self.config['value_loss_coef'] * value_loss - self.config['entropy_coef'] * entropy_loss
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -145,13 +148,12 @@ class A3CWorker:
                 next_value = 0 if done else next_value
             else:
                 next_value = values[step + 1]
-            
+
             delta = rewards[step] + self.config['gamma'] * next_value - values[step]
             gae = delta + self.config['gamma'] * self.config['gae_lambda'] * gae
             returns.insert(0, gae + values[step])
-        
-        return returns
 
+        return returns
 
 class A3CTrainer:
     def __init__(self, env, state_size, action_size, config):
@@ -163,9 +165,9 @@ class A3CTrainer:
             torch.device("cuda" if torch.cuda.is_available() else "cpu"))
         self.global_model.share_memory()
         self.optimizer = optim.Adam(self.global_model.parameters(), lr=config['lr'])
-        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, 
-                                                 step_size=100, 
-                                                 gamma=0.95)
+        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer,
+                                                              T_max=config['max_episodes'],
+                                                              eta_min=0)
 
     def train(self):
         manager = Manager()
@@ -185,18 +187,18 @@ class A3CTrainer:
 
         return list(reward_list)
 
-
 def A3Cstart(environment_name="LunarLander-v3", render_mode=None, max_episodes=5000):
     a3c_env = gym.make(environment_name, render_mode=render_mode)
     a3c_config = {
-        'lr': 3e-4,
+        'lr': 1e-4,
         'gamma': 0.99,
-        'value_loss_coef': 0.5,
+        'value_loss_coef': 0.25,
         'num_workers': 8,
-        'max_episodes': int(max_episodes / 4),
-        'entropy_coef': 0.01,
+        'max_episodes': int(max_episodes / 8),
+        'entropy_coef': 0.005,
         'max_grad_norm': 0.5,
         'gae_lambda': 0.95,
+        'reward_scaling': 0.1
     }
     a3c_trainer = A3CTrainer(environment_name, a3c_env.observation_space.shape[0], a3c_env.action_space.n,
                              a3c_config)

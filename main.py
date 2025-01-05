@@ -10,7 +10,7 @@ def main():
     if torch.cuda.is_available():
         print(f'Device: {torch.cuda.get_device_name(0)}')
     else:
-        print("CUDA desteklenmiyor, sadece CPU kullanılacak.")
+        print("CUDA desteklenmiyor, CPU kullanılacak.")
 
     max_episodes = 5000
     environment_name = "LunarLander-v3"
@@ -21,11 +21,11 @@ def main():
     # dqn_rewards, dqn_time = DQN.DQNstart(environment_name, render_mode, max_episodes)
     # print(f"DQN time: {dqn_time:.1f} seconds")
     #
-    # a3c_rewards, a3c_time = A3C.A3Cstart(environment_name, render_mode, max_episodes)
-    # print(f"A3C time: {a3c_time:.1f} seconds")
+    a3c_rewards, a3c_time = A3C.A3Cstart(environment_name, render_mode, max_episodes)
+    print(f"A3C time: {a3c_time:.1f} seconds")
 
-    ppo_rewards, ppo_time = PPO.PPOstart(environment_name, render_mode, max_episodes)
-    print(f"PPO time: {ppo_time:.1f} seconds")
+    # ppo_rewards, ppo_time = PPO.PPOstart(environment_name, render_mode, max_episodes)
+    # print(f"PPO time: {ppo_time:.1f} seconds")
 
     # Utils.plot_all_algorithms(dqn_rewards, ppo_rewards, a3c_rewards)
     # print("Tüm eğitimler tamamlandı.")
