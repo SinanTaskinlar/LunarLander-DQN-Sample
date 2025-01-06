@@ -1,11 +1,13 @@
 import random
 import time
 from collections import deque
+
 import gymnasium as gym
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
+
 from Utilities import Utils
 
 
@@ -18,7 +20,7 @@ def plot_dqn(dqn_rewards):
     plt.legend()
     plt.grid()
     plt.show()
-    plt.savefig("dqn.png", dpi=300, bbox_inches='tight')
+    plt.savefig("~/Output/dqn/dqn.png", dpi=300, bbox_inches='tight')
 
 
 class DQNModel(nn.Module):

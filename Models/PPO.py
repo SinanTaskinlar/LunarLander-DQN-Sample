@@ -1,10 +1,11 @@
 import time
+
 import gymnasium as gym
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
 
 
 class PPOModel(nn.Module):
@@ -139,7 +140,7 @@ def plot_ppo(ppo_rewards):
     plt.grid()
 
     # Önce kaydet, sonra göster
-    plt.savefig("ppo_results.png", dpi=300, bbox_inches='tight')
+    plt.savefig("~/Output/ppo/ppo_results.png", dpi=300, bbox_inches='tight')
     plt.show()
     plt.close()  # Belleği temizle
 

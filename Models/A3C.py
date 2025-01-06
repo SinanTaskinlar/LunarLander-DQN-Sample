@@ -1,5 +1,6 @@
 import time
 from multiprocessing import Manager, Process
+
 import gymnasium as gym
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,10 +8,13 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.distributions import Categorical
-from Utilities import Utils
+
+from Utilities import Utils as u
+
 
 def smooth_rewards(rewards, window=50):
     return np.convolve(rewards, np.ones(window) / window, mode='valid')
+
 
 def plot_a3c(a3c_rewards):
     smoothed = smooth_rewards(a3c_rewards)
@@ -22,8 +26,9 @@ def plot_a3c(a3c_rewards):
     plt.title("LunarLander Ortamında A3C Algoritması Performansı")
     plt.legend()
     plt.grid()
-    plt.savefig("a3c_smoothed.png", dpi=300, bbox_inches='tight')
+    plt.savefig("~/Output/a3c/a3c_smoothed.png", dpi=300, bbox_inches='tight')
     plt.show()
+
 
 class A3CModel(nn.Module):
     def __init__(self, state_size, action_size, hidden_layers=(256, 128)):
@@ -43,6 +48,7 @@ class A3CModel(nn.Module):
         policy = torch.softmax(self.policy_head(shared), dim=-1)
         value = self.value_head(shared)
         return policy, value
+
 
 class A3CWorker:
     def __init__(self, global_model, optimizer, env_name, config, worker_id, reward_list):
@@ -155,6 +161,7 @@ class A3CWorker:
 
         return returns
 
+
 class A3CTrainer:
     def __init__(self, env, state_size, action_size, config):
         self.env = env
@@ -182,10 +189,11 @@ class A3CTrainer:
         for process in processes:
             process.join()
 
-        Utils.save_model(self.global_model, f"SavedModels/a3c/a3c_model.pth")
+        u.save_model(self.global_model, f"SavedModels/a3c/a3c_model.pth")
         print("A3C model saved.")
 
         return list(reward_list)
+
 
 def A3Cstart(environment_name="LunarLander-v3", render_mode=None, max_episodes=5000):
     a3c_env = gym.make(environment_name, render_mode=render_mode)

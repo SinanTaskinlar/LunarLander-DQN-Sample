@@ -1,6 +1,7 @@
+numpy~=1.26.4
+wheel
 swig
 torch~=2.5.1
 matplotlib~=3.9.2
 gymnasium[box2d]~=1.0.0
 stable-baselines3~=2.4.0
-numpy~=1.26.4
