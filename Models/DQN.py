@@ -84,7 +84,7 @@ class DQNTrainer:
             rewards.append(total_reward)
             # self.plot_and_log.log(episode, total_reward)
 
-            if episode % self.config.get('save_freq', 1000) == 0:
+            if episode % self.config.get('save_freq', 1000) == 0 and episode != 0:
                 Utils.save_model(self.model, f"SavedModels/dqn/dqn_model_{episode}.pth")
 
             if episode % 30 == 0:
@@ -124,7 +124,7 @@ class DQNTrainer:
         self.optimizer.step()
 
 
-def DQNstart(environment_name="LunarLander-v3", render_mode=None, max_episodes=5000):
+def DQNstart(environment_name="LunarLander-v3", render_mode="human", max_episodes=5000):
     dqn_env = gym.make(environment_name, render_mode=render_mode)
     dqn_config = {
         'lr': 1e-4,

@@ -1,4 +1,5 @@
 numpy~=1.26.4
+optuna
 wheel
 swig
 torch~=2.5.1
