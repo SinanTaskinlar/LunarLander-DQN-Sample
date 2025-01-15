@@ -1,13 +1,15 @@
-import optuna
-from Models import A3C, DQN, PPO
-import torch
 import gymnasium as gym
+import optuna
+import torch
+
+from Models import A3C, DQN, PPO
 
 env_name = "LunarLander-v3"
 # render_mode= "human"
 render_mode = None
 n_trails = 10
-max_episodes = 100
+max_episodes = 50
+
 
 def objective_dqn(trial):
     lr = trial.suggest_float("lr", 1e-5, 1e-3, log=True)
@@ -26,11 +28,12 @@ def objective_dqn(trial):
         'target_update_freq': target_update_freq
     }
 
-    dqn_env = gym.make(env_name,render_mode)
+    dqn_env = gym.make(env_name, render_mode)
     dqn_trainer = DQN.DQNTrainer(dqn_env, dqn_env.observation_space.shape[0], dqn_env.action_space.n, dqn_config)
     dqn_rewards = dqn_trainer.train(max_episodes=max_episodes)
     avg_reward = sum(dqn_rewards[-10:]) / 10
     return avg_reward
+
 
 def objective_a3c(trial):
     lr = trial.suggest_float("lr", 1e-5, 1e-3, log=True)
@@ -49,12 +52,13 @@ def objective_a3c(trial):
         'reward_scaling': reward_scaling
     }
 
-    a3c_env = gym.make(env_name,render_mode)
+    a3c_env = gym.make(env_name, render_mode)
     a3c_trainer = A3C.A3CTrainer(env_name, a3c_env.observation_space.shape[0], a3c_env.action_space.n,
-                                a3c_config)
+                                 a3c_config)
     a3c_rewards = a3c_trainer.train()
     avg_reward = sum(a3c_rewards[-10:]) / 10
     return avg_reward
+
 
 def objective_ppo(trial):
     lr = trial.suggest_float("lr", 1e-5, 1e-3, log=True)
@@ -76,12 +80,13 @@ def objective_ppo(trial):
         'reward_scaling': reward_scaling
     }
 
-    ppo_env = gym.make(env_name,render_mode)
+    ppo_env = gym.make(env_name, render_mode)
     ppo_trainer = PPO.PPOTrainer(ppo_env, ppo_env.observation_space.shape[0], ppo_env.action_space.n,
-                                  ppo_config)
+                                 ppo_config)
     ppo_rewards = ppo_trainer.train(max_episodes)
     avg_reward = sum(ppo_rewards[-10:]) / 10
     return avg_reward
+
 
 def start_optimization():
     print(f'PyTorch version: {torch.__version__}')

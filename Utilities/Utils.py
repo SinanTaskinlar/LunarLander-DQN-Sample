@@ -13,7 +13,6 @@ def plot_all_algorithms(dqn_rewards, ppo_rewards, a3c_rewards):
     plt.legend()
     plt.grid()
     plt.show()
-    plt.savefig("~/Output/all.png", dpi=300, bbox_inches='tight')
 
 
 def print_all_times(dqn_time, a3c_time, ppo_time):

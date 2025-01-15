@@ -26,7 +26,6 @@ def plot_a3c(a3c_rewards):
     plt.title("LunarLander Ortamında A3C Algoritması Performansı")
     plt.legend()
     plt.grid()
-    plt.savefig("~/Output/a3c/a3c_smoothed.png", dpi=300, bbox_inches='tight')
     plt.show()
 
 
@@ -106,10 +105,12 @@ class A3CWorker:
                 if done:
                     break
 
-            self.reward_list.append(total_reward)
+            if episode % 25 == 0:
+                self.reward_list.append(total_reward)
+
             self._update_global_model(rewards, log_probs, values, states, done)
 
-            if episode % 30 == 0:
+            if episode % 400 == 0:
                 print(f"Worker {self.worker_id} | Episode {episode} | Reward: {total_reward}")
 
     def _update_global_model(self, rewards, log_probs, values, states, done):

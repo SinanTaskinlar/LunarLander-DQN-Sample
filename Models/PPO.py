@@ -73,11 +73,13 @@ class PPOTrainer:
                 state = torch.tensor(next_state, dtype=torch.float32, device=self.device)
                 total_reward += reward
 
-            episode_rewards.append(total_reward)
+            if episode % 25 == 0:
+                episode_rewards.append(total_reward)
+
             advantages, returns = self.compute_gae(rewards, dones, values)
             self.update_policy(states, actions, advantages, returns)
 
-            if episode % 10 == 0:
+            if episode % 400 == 0:
                 avg_reward = np.mean(episode_rewards[-10:])
                 print(f"Episode {episode}, Avg Reward: {avg_reward}")
 
@@ -138,11 +140,7 @@ def plot_ppo(ppo_rewards):
     plt.title("LunarLander Ortamında PPO Algoritması Performansı")
     plt.legend()
     plt.grid()
-
-    # Önce kaydet, sonra göster
-    plt.savefig("~/Output/ppo/ppo_results.png", dpi=300, bbox_inches='tight')
     plt.show()
-    plt.close()  # Belleği temizle
 
 
 def PPOstart(environment_name="LunarLander-v3", render_mode=None, max_episodes=5000):

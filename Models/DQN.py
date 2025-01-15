@@ -20,7 +20,6 @@ def plot_dqn(dqn_rewards):
     plt.legend()
     plt.grid()
     plt.show()
-    plt.savefig("~/Output/dqn/dqn.png", dpi=300, bbox_inches='tight')
 
 
 class DQNModel(nn.Module):
@@ -81,13 +80,13 @@ class DQNTrainer:
                 self.epsilon * self.config.get('epsilon_decay', 0.995)
             )
 
-            rewards.append(total_reward)
-            # self.plot_and_log.log(episode, total_reward)
+            if episode % 25 == 0:
+                rewards.append(total_reward)
 
-            if episode % self.config.get('save_freq', 1000) == 0 and episode != 0:
+            if episode % self.config.get('save_freq', 2000) == 0 and episode != 0:
                 Utils.save_model(self.model, f"SavedModels/dqn/dqn_model_{episode}.pth")
 
-            if episode % 30 == 0:
+            if episode % 400 == 0:
                 print(f"Episode {episode}, Reward: {total_reward}")
 
             if episode % self.config.get('target_update_freq', 10) == 0:
